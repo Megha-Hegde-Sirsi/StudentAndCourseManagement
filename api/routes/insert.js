@@ -8,45 +8,89 @@ var { Student } = require('.././models/student');
 
 let router = express.Router();
 
-router.post('/insert', async (req, res) => {
-    let allStudents = new Array();
-    let allCourses = new Array();
-
+router.post('/insert', (req, res) => {
+    const allStudents = new Array();
+    const allCourses = new Array();
+    let errStatus;
+    const allPromise = new Array();
     const body = req.body;
-    const students = body.students, course = body.course;
-    const loopArr = students.length >= course.length ? students : course;
-    loopArr.forEach((obj, i) => {
-        if (students[i]) {
-            allStudents.push(students[i]);
-            Student.findOneAndUpdate({ id: students[i].id }, { $set: students[i] }, { new: true }, function (err, doc) {
-                if (err || !doc) {
-                    new Student(students[i]).save();
-                }
-                else {
-                    console.log("succesfully updated: Student");
+    const students = body.students, courses = body.course;
+
+    const promiseStudent = new Promise(function (resolve, reject) {
+        if (students) {
+            students.forEach((student) => {
+                if (student && student.id) {
+                    allStudents.push(student);
+                    updateStudent(student);
+                } else {
+                    errStatus = "error";
                 }
             });
-        }
-        if (course[i]) {
-            allCourses.push(course[i]);
-            Course.findOneAndUpdate({ id: course[i].id }, { $set: course[i] }, { new: true }, function (err, doc) {
-                if (err || !doc) {
-                    new Course(course[i]).save();
-                } else {
-                    console.log("succesfully updated: Course");
-                }
-            })
+            resolve();
+        } else {
+            reject("no values in student object")
         }
     });
-    if (allStudents.length > 0 && allCourses.length > 0) {
-        res.send([{ allStudents }, { allCourses }]);
-    } else if (allStudents.length > 0) {
-        res.send({ allStudents });
-    } else if (allCourses.length > 0) {
-        res.send({ allCourses });
-    } else {
-        res.status(400).send("error");
+
+    const promiseCourse = new Promise(function (resolve, reject) {
+        if (courses) {
+            courses.forEach((course) => {
+                if (course && course.id) {
+                    allCourses.push(course);
+                    updateCourse(course);
+                } else {
+                    errStatus = "error";
+                }
+            });
+            resolve();
+        } else {
+            reject("no values in course object")
+        }
+    });
+
+
+    function updateStudent(student) {
+        Student.findOneAndUpdate({ id: student.id }, { $set: student }, { new: true }, function (err, doc) {
+            if (err || !doc) {
+                new Student(student).save();
+                console.log("student saved")
+            } else
+                console.log("student updated");
+        });
     }
+
+    function updateCourse(course) {
+        Course.findOneAndUpdate({ id: course.id }, { $set: course }, { new: true }, function (err, doc) {
+            if (err || !doc) {
+                new Course(course).save();
+                console.log("course saved")
+            } else {
+                console.log("course updated")
+            }
+        });
+    }
+
+
+    allPromise.push(promiseStudent);
+    allPromise.push(promiseCourse);
+    Promise.all([allPromise]).then(function () {
+        // console.log("-----------allPromise array values------------", allPromise)
+        // console.log("students", allStudents, "courses", allCourses)
+        if (errStatus === "error") {
+            console.log(errStatus);
+            res.status(400).send("error");
+        } else {
+            if (allStudents && allCourses) {
+                res.send([{ allStudents }, { allCourses }]);
+            } else if (allStudents) {
+                res.send({ allStudents });
+            } else if (allCourses) {
+                res.send({ allCourses });
+            }
+        }
+
+    });
+
 });
 
 module.exports = router;
