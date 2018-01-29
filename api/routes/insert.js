@@ -74,8 +74,6 @@ router.post('/insert', (req, res) => {
     allPromise.push(promiseStudent);
     allPromise.push(promiseCourse);
     Promise.all([allPromise]).then(function () {
-        // console.log("-----------allPromise array values------------", allPromise)
-        // console.log("students", allStudents, "courses", allCourses)
         if (errStatus === "error") {
             console.log(errStatus);
             res.status(400).send("error");
